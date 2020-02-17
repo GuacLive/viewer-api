@@ -2,11 +2,12 @@ import * as express from 'express';
 import * as socketIo from 'socket.io';
 import * as redis from 'socket.io-redis';
 import {RedisAdapter} from 'socket.io-redis';
-import {ViewerEvent} from './constants';
+import {PlaybackEvent, ChannelEvent} from './constants';
 import {Channel} from './types';
 import {createServer, Server} from 'http';
 var cors = require('cors');
 
+const VIEWER_API_KEY = process.env.VIEWER_API_KEY;
 export class ViewerServer {
     public static readonly PORT: number = 3003;
     private _app: express.Application;
@@ -35,6 +36,21 @@ export class ViewerServer {
             res.send({
                 viewers: viewerCount
             });
+        });
+        this._app.post('/admin', async(req, res) => {
+            console.log('auth', req.headers.authorization);
+            if(!req.headers.authorization || req.headers.authorization !== VIEWER_API_KEY){
+                return res.status(403).json({statusCode: 403, error: 'Invalid credentials sent!'});
+            }
+            switch(req.body.action){
+                case 'live':
+                    if(!req.body.name) return res.status(400).json({statusCode: 400, error: 'Invalid request!'});
+                    if(this.io){
+                        this.io.of('/channel').in(req.body.name).emit('live', req.body.live || false);
+                    }
+                    res.send(200);
+                break;
+            }
         });
         this.server = createServer(this._app);
         this.initSocket();
@@ -84,11 +100,34 @@ export class ViewerServer {
         });
 
         this.io
+        .of('/channel')
+        .on(ChannelEvent.CONNECT, (socket: socketIo.Socket) => {
+            console.log('[guac.live]', `Connected channel client on port ${this.port}`);
+
+            socket.on(ChannelEvent.JOIN, (c: Channel) => {
+                if(!c.name) socket.disconnect();
+                console.log('[server](channel): join %s', JSON.stringify(c));
+                socket.join(c.name);
+            });
+
+            socket.on(ChannelEvent.LEAVE, async (c: Channel) => {
+                if(!c.name) socket.disconnect();
+                console.log('[server](channel): leave %s', JSON.stringify(c));
+                socket.leave(c.name);
+            });
+
+            socket.on(ChannelEvent.DISCONNECT, () => {
+                console.log('[guac.live]', 'Channel client disconnected');
+                socket.leaveAll();
+            });
+        });
+
+        this.io
         .of('/playback')
-        .on(ViewerEvent.CONNECT, (socket: socketIo.Socket) => {
+        .on(PlaybackEvent.CONNECT, (socket: socketIo.Socket) => {
             console.log('[guac.live]', `Connected playback client on port ${this.port}`);
 
-            socket.on(ViewerEvent.JOIN, (c: Channel) => {
+            socket.on(PlaybackEvent.JOIN, (c: Channel) => {
                 if(!c.name) socket.disconnect();
                 console.log('[server](playback): join %s', JSON.stringify(c));
                 socket.join(c.name, () => {
@@ -96,14 +135,14 @@ export class ViewerServer {
                 });
             });
 
-            socket.on(ViewerEvent.LEAVE, async (c: Channel) => {
+            socket.on(PlaybackEvent.LEAVE, async (c: Channel) => {
                 if(!c.name) socket.disconnect();
                 console.log('[server](playback): leave %s', JSON.stringify(c));
                 socket.leave(c.name);
                 console.log(await this.getViewerCount(c));
             });
 
-            socket.on(ViewerEvent.DISCONNECT, () => {
+            socket.on(PlaybackEvent.DISCONNECT, () => {
                 console.log('[guac.live]', 'Playback client disconnected');
                 socket.leaveAll();
             });
