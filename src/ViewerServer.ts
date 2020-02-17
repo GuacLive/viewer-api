@@ -19,6 +19,7 @@ export class ViewerServer {
         this._app = express();
         this.port = process.env.PORT || ViewerServer.PORT;
         this._app.use(cors());
+        this._app.use(express.json());
         this._app.options('*', cors());
         this._app.get('/viewers', async(_req, res) => {
             this.io.of('/playback').clients((error: Error, clients: Array<string>) => {
@@ -39,18 +40,33 @@ export class ViewerServer {
         });
         this._app.post('/admin', async(req, res) => {
             console.log('auth', req.headers.authorization);
-            if(!req.headers.authorization || req.headers.authorization !== VIEWER_API_KEY){
+            if(!req.headers.authorization || !VIEWER_API_KEY || req.headers.authorization !== VIEWER_API_KEY){
                 return res.status(403).json({statusCode: 403, error: 'Invalid credentials sent!'});
             }
-            switch(req.body.action){
+            if(!req.body.name){
+                return res.status(400).json({statusCode: 400, error: 'Invalid request!'});
+            }
+            switch (req.body.action) {
                 case 'live':
-                    if(!req.body.name) return res.status(400).json({statusCode: 400, error: 'Invalid request!'});
                     if(this.io){
                         this.io.of('/channel').in(req.body.name).emit('live', req.body.live || false);
                     }
-                    res.send(200);
-                break;
+                    res.sendStatus(200);
+                    return;
+                case 'reload':
+                    if(this.io){
+                        this.io.of('/channel').in(req.body.name).emit('reload');
+                    }
+                    res.sendStatus(200);
+                    return;
+                case 'redirect':
+                    if(this.io){
+                        this.io.of('/channel').in(req.body.name).emit('redirect', req.body.url);
+                    }
+                    res.sendStatus(200);
+                    return;
             }
+            res.sendStatus(500);
         });
         this.server = createServer(this._app);
         this.initSocket();
