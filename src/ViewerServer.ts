@@ -25,7 +25,7 @@ export class ViewerServer {
             this.io.of('/playback').clients((error: Error, clients: Array<string>) => {
                 if(error) res.status(500).send(error.message);
                 res.send({
-                    viewers: clients.length
+                    total_connections: clients.length
                 });
             });
         });
