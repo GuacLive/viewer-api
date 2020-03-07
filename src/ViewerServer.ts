@@ -134,7 +134,7 @@ export class ViewerServer {
 
             socket.on(ChannelEvent.DISCONNECT, () => {
                 console.log('[guac.live]', 'Channel client disconnected');
-                socket.leaveAll();
+                //socket.leaveAll();
             });
         });
 
@@ -160,7 +160,7 @@ export class ViewerServer {
 
             socket.on(PlaybackEvent.DISCONNECT, () => {
                 console.log('[guac.live]', 'Playback client disconnected');
-                socket.leaveAll();
+                //socket.leaveAll();
             });
 
             setInterval(() => {return this.emitViewerCount.bind(this)(socket)}, 30 * 1000);
