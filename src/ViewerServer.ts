@@ -74,7 +74,13 @@ export class ViewerServer {
     }
 
     private initSocket(): void {
-        this.io = socketIo(this.server);
+        this.io = socketIo(this.server, <Object>{
+            wsEngine: 'uws',
+            perMessageDeflate: {
+                threshold: 32768,
+                serverNoContextTakeover: false
+            }
+        });
         if(process.env.REDIS_URL){
             const adapter: RedisAdapter = redis(process.env.REDIS_URL);
             this.io.adapter(adapter);  
