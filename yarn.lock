@@ -929,9 +929,9 @@ utils-merge@1.0.1:
   resolved "https://registry.yarnpkg.com/utils-merge/-/utils-merge-1.0.1.tgz#9f95710f50a267947b2ccc124741c1028427e713"
   integrity sha1-n5VxD1CiZ5R7LMwSR0HBAoQn5xM=
 
-uws@mmdevries/uws#2.4.8:
-  version "2.4.7"
-  resolved "https://codeload.github.com/mmdevries/uws/tar.gz/66abe4ca4e4bf6bed2d1101d04053971b5248918"
+uws@mmdevries/uws#2.6.1:
+  version "2.6.1"
+  resolved "https://codeload.github.com/mmdevries/uws/tar.gz/e2f68da3a32c1c6bcb0c9358e04e6fbe340ff948"
 
 vary@^1, vary@~1.1.2:
   version "1.1.2"
