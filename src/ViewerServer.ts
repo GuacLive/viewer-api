@@ -75,10 +75,9 @@ export class ViewerServer {
 
     private initSocket(): void {
         this.io = socketIo(this.server, <Object>{
-            wsEngine: 'uws',
+            wsEngine: 'eiows',
             perMessageDeflate: {
-                threshold: 32768,
-                serverNoContextTakeover: false
+                threshold: 32768
             }
         });
         if(process.env.REDIS_URL){
