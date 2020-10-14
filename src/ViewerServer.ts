@@ -1,8 +1,8 @@
 import * as express from 'express';
 import * as socketIo from 'socket.io';
 import { Socket } from 'socket.io/index';
-import * as redis from 'socket.io-redis';
-import {RedisAdapter} from 'socket.io-redis';
+//import * as redis from 'socket.io-redis';
+//import {RedisAdapter} from 'socket.io-redis';
 import {PlaybackEvent, ChannelEvent} from './constants';
 import {Channel} from './types';
 import {createServer, Server} from 'http';
@@ -99,7 +99,7 @@ export class ViewerServer {
     }
 
     private emitViewerCount(socket: Socket): void {
-        var roomKeys: Array<string> = Object.keys(Object.assign({}, socket.rooms));
+        var roomKeys: Array<string> = Object.keys(socket.rooms());
         var socketIdIndex = roomKeys.indexOf(socket.id);
         roomKeys.splice(socketIdIndex, 1);
         roomKeys.forEach(async (room) => {
