@@ -23,7 +23,7 @@ export class ViewerServer {
         this._app.use(express.json());
         this._app.options('*', cors());
         this._app.get('/viewers', async(_req, res) => {
-            let clients =this.io.of('/playback').allSockets();
+            let clients = await this.io.of('/playback').allSockets();
             
             res.send({
                 total_connections: clients.size
@@ -87,7 +87,7 @@ export class ViewerServer {
     }
 
     private async getViewerCount(c: Channel) {
-        return await new Promise<number>(async (resolve: Function, reject: Function) => {
+        return await new Promise<number>(async (resolve: Function, /*reject: Function*/) => {
             if(!c.name) resolve(0);
             const clients = await this.io
             .of('/playback')
