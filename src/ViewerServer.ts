@@ -80,10 +80,10 @@ export class ViewerServer {
                 threshold: 32768
             }
         });
-        if(process.env.REDIS_URL){
+        /*if(process.env.REDIS_URL){
             const adapter: RedisAdapter = redis(process.env.REDIS_URL);
             this.io.adapter(adapter);  
-        }  
+        }*/
     }
 
     private async getViewerCount(c: Channel) {
