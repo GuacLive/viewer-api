@@ -1,8 +1,7 @@
 import * as express from 'express';
 import * as socketIo from 'socket.io';
-import { Socket } from 'socket.io/index';
-//import * as redis from 'socket.io-redis';
-//import {RedisAdapter} from 'socket.io-redis';
+import * as redis from 'socket.io-redis';
+import {RedisAdapter} from 'socket.io-redis';
 import {PlaybackEvent, ChannelEvent} from './constants';
 import {Channel} from './types';
 import {createServer, Server} from 'http';
@@ -13,7 +12,7 @@ export class ViewerServer {
     public static readonly PORT: number = 3003;
     private _app: express.Application;
     private server: Server;
-    private io: socketIo.Server;
+    private io: SocketIO.Server;
     private port: string | number;
 
     constructor() {
@@ -23,10 +22,11 @@ export class ViewerServer {
         this._app.use(express.json());
         this._app.options('*', cors());
         this._app.get('/viewers', async(_req, res) => {
-            let clients = await this.io.of('/playback').allSockets();
-            
-            res.send({
-                total_connections: clients.size
+            this.io.of('/playback').clients((error: Error, clients: Array<string>) => {
+                if(error) res.status(500).send(error.message);
+                res.send({
+                    total_connections: clients.length
+                });
             });
         });
         this._app.get('/viewers/:channel', async(req, res) => {
@@ -74,31 +74,33 @@ export class ViewerServer {
     }
 
     private initSocket(): void {
-        this.io = new socketIo.Server(this.server, <Object>{
+        this.io = socketIo(this.server, <Object>{
             wsEngine: 'eiows',
             perMessageDeflate: {
                 threshold: 32768
             }
         });
-        /*if(process.env.REDIS_URL){
+        if(process.env.REDIS_URL){
             const adapter: RedisAdapter = redis(process.env.REDIS_URL);
             this.io.adapter(adapter);  
-        }*/
+        }  
     }
 
     private async getViewerCount(c: Channel) {
-        return await new Promise<number>(async (resolve: Function, /*reject: Function*/) => {
+        return await new Promise<number>((resolve: Function, reject: Function) => {
             if(!c.name) resolve(0);
-            const clients = await this.io
+            this.io
             .of('/playback')
             .in(c.name)
-            .allSockets();
-            let clientCount: Number = clients.size;
-            resolve(clientCount);
+            .clients((error: Error, clients: Array<string>) => {
+                if(error) reject(error);
+                let clientCount: Number = clients.length;
+                resolve(clientCount);
+            });
         });
     }
 
-    private emitViewerCount(socket: Socket): void {
+    private emitViewerCount(socket: socketIo.Socket): void {
         var roomKeys: Array<string> = Object.keys(Object.assign({}, socket.rooms));
         var socketIdIndex = roomKeys.indexOf(socket.id);
         roomKeys.splice(socketIdIndex, 1);
@@ -120,7 +122,7 @@ export class ViewerServer {
 
         this.io
         .of('/channel')
-        .on(ChannelEvent.CONNECT, (socket: Socket) => {
+        .on(ChannelEvent.CONNECT, (socket: socketIo.Socket) => {
             console.log('[guac.live]', `Connected channel client on port ${this.port}`);
 
             socket.on(ChannelEvent.JOIN, (c: Channel) => {
@@ -143,7 +145,7 @@ export class ViewerServer {
 
         this.io
         .of('/playback')
-        .on(PlaybackEvent.CONNECT, (socket: Socket) => {
+        .on(PlaybackEvent.CONNECT, (socket: socketIo.Socket) => {
             console.log('[guac.live]', `Connected playback client on port ${this.port}`);
 
             socket.on(PlaybackEvent.JOIN, (c: Channel) => {
