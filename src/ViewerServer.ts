@@ -1,10 +1,10 @@
 import * as express from 'express';
 import * as socketIo from 'socket.io';
-import * as redis from 'socket.io-redis';
-import {RedisAdapter} from 'socket.io-redis';
+import {RedisAdapter, createAdapter} from 'socket.io-redis';
 import {PlaybackEvent, ChannelEvent} from './constants';
 import {Channel} from './types';
 import {createServer, Server} from 'http';
+// @ts-ignore
 var cors = require('cors');
 
 const VIEWER_API_KEY = process.env.VIEWER_API_KEY;
@@ -74,29 +74,27 @@ export class ViewerServer {
     }
 
     private initSocket(): void {
-        this.io = socketIo(this.server, <Object>{
+        this.io = require('socket.io')(this.server, {
             wsEngine: 'eiows',
             perMessageDeflate: {
                 threshold: 32768
             }
         });
         if(process.env.REDIS_URL){
-            const adapter: RedisAdapter = redis(process.env.REDIS_URL);
+            const adapter: RedisAdapter = createAdapter(process.env.REDIS_URL);
             this.io.adapter(adapter);  
         }  
     }
 
     private async getViewerCount(c: Channel) {
-        return await new Promise<number>((resolve: Function, reject: Function) => {
+        return await new Promise<number>(async (resolve: Function, /*reject: Function*/) => {
             if(!c.name) resolve(0);
-            this.io
-            .of('/playback')
-            .in(c.name)
-            .clients((error: Error, clients: Array<string>) => {
-                if(error) reject(error);
-                let clientCount: Number = clients.length;
-                resolve(clientCount);
-            });
+            const clients = this.io
+                .of('/playback')
+                .in(c.name)
+                .sockets;
+            let clientCount = clients.size;
+            resolve(clientCount);
         });
     }
 
@@ -151,9 +149,7 @@ export class ViewerServer {
             socket.on(PlaybackEvent.JOIN, (c: Channel) => {
                 if(!c.name) socket.disconnect();
                 console.log('[server](playback): join %s', JSON.stringify(c));
-                socket.join(c.name, () => {
-                    this.emitViewerCount(socket);
-                });
+                socket.join(c.name);
             });
 
             socket.on(PlaybackEvent.LEAVE, async (c: Channel) => {
