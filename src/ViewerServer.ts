@@ -75,8 +75,9 @@ export class ViewerServer {
         this.io = require('socket.io')(this.server, {
             wsEngine: 'eiows',
             cors: {
-                origin: '*',
-                methods: ['GET', 'POST']
+                origin: 'https://guac.live',
+                methods: ['GET', 'POST'],
+                credentials: true
             },
             perMessageDeflate: {
                 threshold: 32768
