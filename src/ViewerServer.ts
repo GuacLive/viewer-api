@@ -74,6 +74,10 @@ export class ViewerServer {
     private initSocket(): void {
         this.io = require('socket.io')(this.server, {
             wsEngine: 'eiows',
+            cors: {
+                origin: '*',
+                methods: ['GET', 'POST']
+            },
             perMessageDeflate: {
                 threshold: 32768
             }
