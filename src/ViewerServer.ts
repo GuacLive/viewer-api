@@ -153,6 +153,7 @@ export class ViewerServer {
                 if(!c.name) socket.disconnect();
                 console.log('[server](playback): join %s', JSON.stringify(c));
                 socket.join(c.name);
+                this.emitViewerCount(socket);
             });
 
             socket.on(PlaybackEvent.LEAVE, async (c: Channel) => {
