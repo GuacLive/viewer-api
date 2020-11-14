@@ -102,9 +102,8 @@ export class ViewerServer {
     }
 
     private emitViewerCount(socket: socketIo.Socket): void {
-        var roomKeys: Array<string> = Object.keys(Object.assign({}, socket.rooms));
-        var socketIdIndex = roomKeys.indexOf(socket.id);
-        roomKeys.splice(socketIdIndex, 1);
+        var roomKeys: Set<string> = new Set(socket.rooms);
+        roomKeys.delete(socket.id);
         roomKeys.forEach(async (room) => {
             console.log('yes', room);
             socket.emit('viewerCount', {
