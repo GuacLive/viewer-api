@@ -22,11 +22,9 @@ export class ViewerServer {
         this._app.use(express.json());
         this._app.options('*', cors());
         this._app.get('/viewers', async(_req, res) => {
-            this.io.of('/playback').clients((error: Error, clients: Array<string>) => {
-                if(error) res.status(500).send(error.message);
-                res.send({
-                    total_connections: clients.length
-                });
+            const clients = await this.io.of('/playback').sockets;
+            res.send({
+                 total_connections: clients.size
             });
         });
         this._app.get('/viewers/:channel', async(req, res) => {
