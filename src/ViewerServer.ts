@@ -75,7 +75,7 @@ export class ViewerServer {
         this.io = require('socket.io')(this.server, {
             wsEngine: 'eiows',
             cors: {
-                origin: '*',
+                origin: true,
                 methods: ['GET', 'POST'],
                 credentials: true
             },
