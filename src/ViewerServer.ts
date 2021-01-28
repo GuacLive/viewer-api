@@ -92,10 +92,11 @@ export class ViewerServer {
     private async getViewerCount(c: Channel) {
         return await new Promise<number>(async (resolve: Function, /*reject: Function*/) => {
             if(!c.name) resolve(0);
-            const clients = this.io
+            const clients = await this.io
                 .of('/playback')
-                .in(c.name)
-                .sockets;
+                .adapter
+                // @ts-ignore
+                .sockets(new Set([c.name]));
             let clientCount = clients.size;
             resolve(clientCount);
         });
