@@ -132,6 +132,10 @@ export class ViewerServer {
                 socket.join(c.name);
             });
 
+            socket.on(ChannelEvent.SET, (c: string) => {
+                socket.emit(ChannelEvent.SET, c);
+            })
+
             socket.on(ChannelEvent.LEAVE, async (c: Channel) => {
                 if(!c.name) socket.disconnect();
                 console.log('[server](channel): leave %s', JSON.stringify(c));
