@@ -132,10 +132,6 @@ export class ViewerServer {
                 socket.join(c.name);
             });
 
-            socket.on(ChannelEvent.SET, (c: string) => {
-                socket.emit(ChannelEvent.SET, c);
-            })
-
             socket.on(ChannelEvent.LEAVE, async (c: Channel) => {
                 if(!c.name) socket.disconnect();
                 console.log('[server](channel): leave %s', JSON.stringify(c));
@@ -159,6 +155,10 @@ export class ViewerServer {
                 socket.join(c.name);
                 this.emitViewerCount(socket);
             });
+
+            socket.on(PlaybackEvent.SET, (c: string) => {
+                socket.emit(PlaybackEvent.SET, c);
+            })
 
             socket.on(PlaybackEvent.LEAVE, async (c: Channel) => {
                 if(!c.name) socket.disconnect();
