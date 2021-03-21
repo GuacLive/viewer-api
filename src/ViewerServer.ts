@@ -56,7 +56,7 @@ export class ViewerServer {
                         if(!req.body.name) return res.sendStatus(500);
                         if(!req.body.event || !req.body.event.message) return res.sendStatus(500);
                         this.io.of('/channel').in(req.body.name).emit('event', {
-                            channel: req.body.name,
+                            channel: {name: req.body.name},
                             event: req.body.event
                         });
                     }
