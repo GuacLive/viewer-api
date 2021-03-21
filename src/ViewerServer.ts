@@ -102,7 +102,7 @@ export class ViewerServer {
 
     private async getViewerCount(c: Channel) {
         return await new Promise<number>(async (resolve: Function, /*reject: Function*/) => {
-            if(!c.name) resolve(0);
+            if(!c || !c.name) resolve(0);
             const clients = await this.io
                 .of('/playback')
                 .adapter
@@ -138,12 +138,13 @@ export class ViewerServer {
             console.log('[guac.live]', `Connected channel client on port ${this.port}`);
 
             socket.on(ChannelEvent.JOIN, (c: Channel) => {
-                if(!c.name) socket.disconnect();
+                if(!c || !c.name) socket.disconnect();
                 console.log('[server](channel): join %s', JSON.stringify(c));
                 socket.join(c.name);
             });
 
             socket.on(ChannelEvent.EVENT, (c: Channel, e: Event) => {
+                if(!c || !c.name) socket.disconnect();
                 socket.in(c.name).emit('event', {
                     channel: c.name,
                    ...e
@@ -151,7 +152,7 @@ export class ViewerServer {
             });
 
             socket.on(ChannelEvent.LEAVE, async (c: Channel) => {
-                if(!c.name) socket.disconnect();
+                if(!c || !c.name) socket.disconnect();
                 console.log('[server](channel): leave %s', JSON.stringify(c));
                 socket.leave(c.name);
             });
@@ -168,7 +169,7 @@ export class ViewerServer {
             console.log('[guac.live]', `Connected playback client on port ${this.port}`);
 
             socket.on(PlaybackEvent.JOIN, (c: Channel) => {
-                if(!c.name) socket.disconnect();
+                if(!c || !c.name) socket.disconnect();
                 console.log('[server](playback): join %s', JSON.stringify(c));
                 socket.join(c.name);
                 this.emitViewerCount(socket);
@@ -179,7 +180,7 @@ export class ViewerServer {
             })
 
             socket.on(PlaybackEvent.LEAVE, async (c: Channel) => {
-                if(!c.name) socket.disconnect();
+                if(!c || !c.name) socket.disconnect();
                 console.log('[server](playback): leave %s', JSON.stringify(c));
                 socket.leave(c.name);
                 console.log(await this.getViewerCount(c));
