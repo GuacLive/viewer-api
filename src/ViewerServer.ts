@@ -2,7 +2,7 @@ import * as express from 'express';
 import * as socketIo from 'socket.io';
 import {RedisAdapter, createAdapter} from 'socket.io-redis';
 import {PlaybackEvent, ChannelEvent} from './constants';
-import {Channel, User} from './types';
+import {Channel} from './types';
 import {createServer, Server} from 'http';
 // @ts-ignore
 var cors = require('cors');
