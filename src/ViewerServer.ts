@@ -2,7 +2,7 @@ import * as express from 'express';
 import * as socketIo from 'socket.io';
 import {RedisAdapter, createAdapter} from 'socket.io-redis';
 import {PlaybackEvent, ChannelEvent} from './constants';
-import {Channel} from './types';
+import {Channel, User} from './types';
 import {createServer, Server} from 'http';
 // @ts-ignore
 var cors = require('cors');
@@ -48,6 +48,17 @@ export class ViewerServer {
                 case 'live':
                     if(this.io){
                         this.io.of('/channel').in(req.body.name).emit('live', req.body.live || false);
+                    }
+                    res.sendStatus(200);
+                    return;
+                case 'event':
+                    if(this.io){
+                        if(!req.body.name) return res.sendStatus(500);
+                        if(!req.body.event || !req.body.event.message) return res.sendStatus(500);
+                        this.io.of('/channel').in(req.body.name).emit('event', {
+                            channel: req.body.name,
+                            event: req.body.event
+                        });
                     }
                     res.sendStatus(200);
                     return;
@@ -130,6 +141,13 @@ export class ViewerServer {
                 if(!c.name) socket.disconnect();
                 console.log('[server](channel): join %s', JSON.stringify(c));
                 socket.join(c.name);
+            });
+
+            socket.on(ChannelEvent.EVENT, (c: Channel, e: Event) => {
+                socket.in(c.name).emit('event', {
+                    channel: c.name,
+                   ...e
+                });
             });
 
             socket.on(ChannelEvent.LEAVE, async (c: Channel) => {
