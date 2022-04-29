@@ -17,6 +17,7 @@
   "dependencies": {
     "@socket.io/redis-adapter": "^7",
     "cors": "^2.8.5",
+    "dotenv": "^16.0.0",
     "eiows": "^4",
     "express": "^5.0.0-beta.1",
     "redis": "^4",

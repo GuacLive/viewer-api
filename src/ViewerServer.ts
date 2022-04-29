@@ -1,4 +1,5 @@
 import {createAdapter} from '@socket.io/redis-adapter';
+import 'dotenv/config'; // see https://github.com/motdotla/dotenv#how-do-i-use-dotenv-with-import
 import * as express from 'express';
 import {createServer, Server} from 'http';
 import {createClient} from 'redis';
@@ -17,6 +18,7 @@ const pubClient: RedisClientType = createClient({
 const subClient = pubClient.duplicate();
 
 const VIEWER_API_KEY = process.env.VIEWER_API_KEY;
+
 export class ViewerServer {
     public static readonly PORT: number = 3003;
     private _app: express.Application;
