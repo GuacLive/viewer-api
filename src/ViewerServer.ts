@@ -1,18 +1,27 @@
+import {createAdapter} from '@socket.io/redis-adapter';
 import * as express from 'express';
-import * as socketIo from 'socket.io';
-import {RedisAdapter, createAdapter} from 'socket.io-redis';
-import {PlaybackEvent, ChannelEvent} from './constants';
-import {Channel} from './types';
 import {createServer, Server} from 'http';
+import {createClient} from 'redis';
+import * as socketIo from 'socket.io';
+import {ChannelEvent, PlaybackEvent} from './constants';
+import {Channel} from './types';
 // @ts-ignore
 var cors = require('cors');
+
+export type RedisClientType = ReturnType<typeof createClient>;
+
+const REDIS_URL = process.env.REDIS_URL ?? 'redis://localhost:6379';
+const pubClient: RedisClientType = createClient({
+	url: REDIS_URL,
+});
+const subClient = pubClient.duplicate();
 
 const VIEWER_API_KEY = process.env.VIEWER_API_KEY;
 export class ViewerServer {
     public static readonly PORT: number = 3003;
     private _app: express.Application;
     private server: Server;
-    private io: SocketIO.Server;
+    private io: socketIo.Server;
     private port: string | number;
 
     constructor() {
@@ -21,10 +30,23 @@ export class ViewerServer {
         this._app.use(cors());
         this._app.use(express.json());
         this._app.options('*', cors());
+
         this._app.get('/viewers', async(_req, res) => {
+            // @ts-expect-error
+            const rooms = await this.io.of('/playback').adapter.allRooms();
             const clients = await this.io.of('/playback').sockets;
+            const roomsWithViewers = await Promise.all(
+                [...rooms].map(async (room): Promise<{username: string; viewers: number}> => {
+                    return {
+                        username: room,
+                        viewers: room.sockets.size
+                    }
+                })
+            )
+
             res.send({
-                 total_connections: clients.size
+                rooms: roomsWithViewers.sort((a, b) => b.viewers - a.viewers),
+                total_connections: clients.size
             });
         });
         this._app.get('/viewers/:channel', async(req, res) => {
@@ -84,7 +106,7 @@ export class ViewerServer {
 
     private initSocket(): void {
         this.io = require('socket.io')(this.server, {
-            wsEngine: 'eiows',
+            wsEngine: require("eiows").Server,
             cors: {
                 origin: true,
                 methods: ['GET', 'POST'],
@@ -94,10 +116,8 @@ export class ViewerServer {
                 threshold: 32768
             }
         });
-        if(process.env.REDIS_URL){
-            const adapter: RedisAdapter = createAdapter(process.env.REDIS_URL);
-            this.io.adapter(adapter);  
-        }  
+        // @ts-expect-error
+		this.io.adapter(createAdapter(pubClient, subClient));
     }
 
     private async getViewerCount(c: Channel) {
@@ -127,71 +147,76 @@ export class ViewerServer {
         })
     }
 
-    private listen(): void {
-        this.server.listen(this.port, () => {
-            console.log('[guac.live]', `Running viewer server on port ${this.port}`);
-        });
+     private async listen(): Promise<void> {
+		let promises: any[] = [];
+		promises = [pubClient.connect(), subClient.connect()];
 
-        this.io
-        .of('/channel')
-        .on(ChannelEvent.CONNECT, (socket: socketIo.Socket) => {
-            console.log('[guac.live]', `Connected channel client on port ${this.port}`);
-
-            socket.on(ChannelEvent.JOIN, (c: Channel) => {
-                if(!c || !c.name) return socket.disconnect();
-                console.log('[server](channel): join %s', JSON.stringify(c));
-                socket.join(c.name);
+		return Promise.all(promises).then(() => {
+            this.server.listen(this.port, () => {
+                console.log('[guac.live]', `Running viewer server on port ${this.port}`);
             });
 
-            socket.on(ChannelEvent.EVENT, (c: Channel, e: Event) => {
-                if(!c || !c.name) return socket.disconnect();
-                socket.in(c.name).emit('event', {
-                    channel: c.name,
-                   ...e
+            this.io
+            .of('/channel')
+            .on(ChannelEvent.CONNECT, (socket: socketIo.Socket) => {
+                console.log('[guac.live]', `Connected channel client on port ${this.port}`);
+
+                socket.on(ChannelEvent.JOIN, (c: Channel) => {
+                    if(!c || !c.name) return socket.disconnect();
+                    console.log('[server](channel): join %s', JSON.stringify(c));
+                    socket.join(c.name);
+                });
+
+                socket.on(ChannelEvent.EVENT, (c: Channel, e: Event) => {
+                    if(!c || !c.name) return socket.disconnect();
+                    socket.in(c.name).emit('event', {
+                        channel: c.name,
+                    ...e
+                    });
+                });
+
+                socket.on(ChannelEvent.LEAVE, async (c: Channel) => {
+                    if(!c || !c.name) return socket.disconnect();
+                    console.log('[server](channel): leave %s', JSON.stringify(c));
+                    socket.leave(c.name);
+                });
+
+                socket.on(ChannelEvent.DISCONNECT, () => {
+                    console.log('[guac.live]', 'Channel client disconnected');
+                    //socket.leaveAll();
                 });
             });
 
-            socket.on(ChannelEvent.LEAVE, async (c: Channel) => {
-                if(!c || !c.name) return socket.disconnect();
-                console.log('[server](channel): leave %s', JSON.stringify(c));
-                socket.leave(c.name);
+            this.io
+            .of('/playback')
+            .on(PlaybackEvent.CONNECT, (socket: socketIo.Socket) => {
+                console.log('[guac.live]', `Connected playback client on port ${this.port}`);
+
+                socket.on(PlaybackEvent.JOIN, (c: Channel) => {
+                    if(!c || !c.name) return socket.disconnect();
+                    console.log('[server](playback): join %s', JSON.stringify(c));
+                    socket.join(c.name);
+                    this.emitViewerCount(socket);
+                });
+
+                socket.on(PlaybackEvent.SET, (c: string) => {
+                    socket.emit(PlaybackEvent.SET, c);
+                })
+
+                socket.on(PlaybackEvent.LEAVE, async (c: Channel) => {
+                    if(!c || !c.name) return socket.disconnect();
+                    console.log('[server](playback): leave %s', JSON.stringify(c));
+                    socket.leave(c.name);
+                    console.log(await this.getViewerCount(c));
+                });
+
+                socket.on(PlaybackEvent.DISCONNECT, () => {
+                    console.log('[guac.live]', 'Playback client disconnected');
+                    //socket.leaveAll();
+                });
+
+                setInterval(() => {return this.emitViewerCount.bind(this)(socket)}, 30 * 1000);
             });
-
-            socket.on(ChannelEvent.DISCONNECT, () => {
-                console.log('[guac.live]', 'Channel client disconnected');
-                //socket.leaveAll();
-            });
-        });
-
-        this.io
-        .of('/playback')
-        .on(PlaybackEvent.CONNECT, (socket: socketIo.Socket) => {
-            console.log('[guac.live]', `Connected playback client on port ${this.port}`);
-
-            socket.on(PlaybackEvent.JOIN, (c: Channel) => {
-                if(!c || !c.name) return socket.disconnect();
-                console.log('[server](playback): join %s', JSON.stringify(c));
-                socket.join(c.name);
-                this.emitViewerCount(socket);
-            });
-
-            socket.on(PlaybackEvent.SET, (c: string) => {
-                socket.emit(PlaybackEvent.SET, c);
-            })
-
-            socket.on(PlaybackEvent.LEAVE, async (c: Channel) => {
-                if(!c || !c.name) return socket.disconnect();
-                console.log('[server](playback): leave %s', JSON.stringify(c));
-                socket.leave(c.name);
-                console.log(await this.getViewerCount(c));
-            });
-
-            socket.on(PlaybackEvent.DISCONNECT, () => {
-                console.log('[guac.live]', 'Playback client disconnected');
-                //socket.leaveAll();
-            });
-
-            setInterval(() => {return this.emitViewerCount.bind(this)(socket)}, 30 * 1000);
         });
     }
 

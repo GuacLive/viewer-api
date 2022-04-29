@@ -1,34 +1,34 @@
 {
   "name": "viewer-api",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "",
   "main": "lib/server.js",
   "scripts": {
     "build": "rimraf dist && tsc -p tsconfig.build.json",
-    "dev": "tsc-watch -p tsconfig.json --onSuccess 'node ./lib/server.js'",
+    "dev": "cross-env NODE_ENV=development tsc-watch --onSuccess \"node ./lib/server.js\"",
     "format": "prettier --write \"src/**/*.ts\"",
     "lint": "tslint -p tsconfig.json -c tslint.json",
     "typecheck": "tsc -p tsconfig.build.json --noEmit",
     "prepare": "npm run build"
   },
   "keywords": [],
-  "author": "",
+  "author": "Thomas Lekanger <datagutt@lekanger.no>",
   "license": "MIT",
   "dependencies": {
-    "@types/component-emitter": "^1.2.10",
-    "@types/cookie": "^0.4.0",
-    "@types/cors": "^2.8.8",
+    "@socket.io/redis-adapter": "^7",
     "cors": "^2.8.5",
-    "eiows": "^3.4.1",
-    "express": "^5.0.0-alpha.8",
+    "eiows": "^4",
+    "express": "^5.0.0-beta.1",
+    "redis": "^4",
     "rimraf": "^3.0.2",
-    "socket.io": "^3.0",
-    "socket.io-redis": "^6.0",
-    "tsc-watch": "^4.1.0",
-    "typescript": "^4.0.0-dev.20200615"
+    "socket.io": "^4",
+    "tsc-watch": "^5.0.3",
+    "typescript": "^4"
   },
   "devDependencies": {
-    "@types/express": "4.17.7",
-    "@types/socket.io": "^2.1.4"
+    "@types/component-emitter": "^1.2.10",
+    "@types/cookie": "^0.5.1",
+    "@types/cors": "^2.8.8",
+    "@types/express": "4.17.13"
   }
 }
