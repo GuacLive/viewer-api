@@ -34,15 +34,14 @@ export class ViewerServer {
         this._app.options('*', cors());
 
         this._app.get('/viewers', async(_req, res) => {
-            // @ts-expect-error
-            const rooms = await this.io.of('/playback').adapter.allRooms();
+            const rooms = await this.io.of('/playback').adapter.rooms;
             const clients = await this.io.of('/playback').sockets;
             const roomsWithViewers = await Promise.all(
-                [...rooms].map(async (room): Promise<{username: string; viewers: number}> => {
-                    return {
+                [...rooms].map(async ([room, sockets]): Promise<{username: string; viewers: number}> => {
+                    return Promise.resolve({
                         username: room,
-                        viewers: room.sockets.size
-                    }
+                        viewers: sockets.size
+                    });
                 })
             )
 
