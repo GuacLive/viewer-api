@@ -37,16 +37,21 @@ export class ViewerServer {
             const rooms = await this.io.of('/playback').adapter.rooms;
             const clients = await this.io.of('/playback').sockets;
             const roomsWithViewers = await Promise.all(
-                [...rooms].map(async ([room, sockets]): Promise<{username: string; viewers: number}> => {
-                    return Promise.resolve({
-                        username: room,
-                        viewers: sockets.size
-                    });
+                [...rooms].map(async ([room, sockets]): Promise<{username: string; viewers: number} | null> => {
+                    const isPrivate = sockets.size === 1 && sockets.has(room);
+                    if(!isPrivate) {
+                        return Promise.resolve({
+                              username: room,
+                             viewers: sockets.size
+                         });
+                    } else {
+                        return Promise.resolve(null);
+                    }
                 })
-            )
+            );
 
             res.send({
-                rooms: roomsWithViewers.sort((a, b) => b.viewers - a.viewers),
+                rooms: roomsWithViewers.filter(a => !!a).sort((a, b) => b.viewers - a.viewers),
                 total_connections: clients.size
             });
         });
