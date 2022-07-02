@@ -153,6 +153,10 @@ export class ViewerServer {
         })
     }
 
+    private emitServerTime(socket: socketIo.Socket): void {
+        socket.emit('serverTime', new Date().toISOString());
+    }
+
      private async listen(): Promise<void> {
 		let promises: any[] = [];
 		promises = [pubClient.connect(), subClient.connect()];
@@ -203,6 +207,7 @@ export class ViewerServer {
                     console.log('[server](playback): join %s', JSON.stringify(c));
                     socket.join(c.name);
                     this.emitViewerCount(socket);
+                    this.emitServerTime(socket);
                 });
 
                 socket.on(PlaybackEvent.SET, (c: string) => {
@@ -222,6 +227,7 @@ export class ViewerServer {
                 });
 
                 setInterval(() => {return this.emitViewerCount.bind(this)(socket)}, 30 * 1000);
+                setInterval(() => {return this.emitServerTime.bind(this)(socket)}, 5 * 1000);
             });
         });
     }
